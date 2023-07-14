@@ -1,0 +1,5 @@
+langchain==0.0.230
+pinecone_client==2.2.2
+streamlit==1.15.1
+altair==4
+openai==0.27.8
