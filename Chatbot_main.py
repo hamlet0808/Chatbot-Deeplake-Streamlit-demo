@@ -128,8 +128,8 @@ if __name__ == '__main__':
     #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"Chat_history/data_{st.session_state.timestamp}.json"
 
-    with open(filename, 'w') as json_file:
-        json.dump(st.session_state.chat_history, json_file, ensure_ascii=False, indent=4)
+    # with open(filename, 'w') as json_file:
+    #     json.dump(st.session_state.chat_history, json_file, ensure_ascii=False, indent=4)
         
 
 
