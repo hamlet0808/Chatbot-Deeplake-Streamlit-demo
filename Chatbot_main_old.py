@@ -20,7 +20,7 @@ from langchain.chains import ConversationChain
 from langchain.callbacks import get_openai_callback
     
 from htmlTemplates import css, bot_template, user_template
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 
 
 class Chatbot:
@@ -28,9 +28,8 @@ class Chatbot:
     def __init__(self, model_name):
 
         self.model_name = model_name
-        self.openai_key = "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" ## provide your openai key
-        self.embeddings = OpenAIEmbeddings(openai_api_key = self.openai_key, model='text-embedding-ada-002')
-        self.llm = ChatOpenAI(openai_api_key = self.openai_key, model_name=model_name, temperature=0.0, max_tokens=500) 
+        self.embeddings = OpenAIEmbeddings(model='text-embedding-ada-002')
+        self.llm = ChatOpenAI(model_name=model_name, temperature=0.0, max_tokens=500) 
 
 
     def get_vectorstore(self, index_name):
@@ -76,7 +75,7 @@ class Chatbot:
 
 if __name__ == '__main__':
 
-    #load_dotenv() ### Loading environment variables such as OpenAI key
+    load_dotenv() ### Loading environment variables such as OpenAI key
     st.write(css, unsafe_allow_html=True)
 
     chatbot = Chatbot('gpt-3.5-turbo') ### initialize chatbot
@@ -101,9 +100,9 @@ if __name__ == '__main__':
             response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question}")
             if cb.total_tokens > 3000:
                 st.session_state.conversation.memory.buffer.pop(0)
-            print(f"Count of tokens:", {cb.total_tokens})
+            #print(f"Count of tokens:", {cb.total_tokens})
 
-        print(len(response.split()))
+        #print(len(response.split()))
 
         ### This part only shows chat history in Streamlit app (we are not going to use in final version)
 
