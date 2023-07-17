@@ -1,9 +1,8 @@
 import os
 import streamlit as st
 import pinecone
+import openai
 import json
-#import langchain ### langchain version 0.0.180
-#pinecone rate limit
 
 from langchain.prompts import PromptTemplate
 from langchain.prompts import (
@@ -24,17 +23,14 @@ from htmlTemplates import css, bot_template, user_template
 from datetime import datetime
 from dotenv import load_dotenv
 
-
 class Chatbot:
 
     def __init__(self, model_name):
 
         self.model_name = model_name
-        #self.openai_key = "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" ## provide your openai key
         self.embeddings = OpenAIEmbeddings(model='text-embedding-ada-002')
-        self.llm = ChatOpenAI(model_name=model_name, temperature=0.0, max_tokens=500) 
-
-
+        self.llm = ChatOpenAI(model_name=model_name, temperature=0.0, max_tokens=500)
+        
     def get_vectorstore(self, index_name):
         """
         Load vectorstore of our data from Pinecone index
@@ -46,6 +42,25 @@ class Chatbot:
                                                    index_name=index_name)
 
         return vectorstore
+    
+    def query_refiner(self,conversation, query):
+
+        #print("num of words:", len(conversation.split()))
+
+        response = openai.Completion.create(
+                    model="text-davinci-003",
+                    prompt=f"Given the following user query and conversation log, formulate a question that would be the most relevant to provide the user with an answer from a knowledge base.\n\nCONVERSATION LOG: \n{conversation}\n\nQuery: {query}\n\nRefined Query:",
+                    temperature=0.7,
+                    max_tokens=256,
+                    top_p=1,
+                    frequency_penalty=0,
+                    presence_penalty=0
+                )
+        
+        response_text = response['choices'][0]['text']
+        
+            
+        return response_text
 
 
     def conversational_chat(self):
@@ -53,26 +68,20 @@ class Chatbot:
         Start a conversational chat with a model via Langchain
         """
         system_msg_template = SystemMessagePromptTemplate.from_template(template="""
-                      Act as a helpful startup legal assistant. Use provided context to answer the questions.
+                      Act as a helpful startup legal assistant. Your name is Jessica. Use provided context to answer the questions.
                       If the question is not related to the context, just say "Hmm, I don't think this question is about startup law.  I can only provide insights on startup law.  Sorry about that!".
                       If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
-                      Use bullet points if you have to make a list, only if necessary.
-                      Very important: Please provide an answer that is no more than 100 words.
+                      Use bullet points if you have to make a list.
                       Very important: Do Not disclose your sources.
                       Very important: Do Not disclose any names of persons or names of organizations in your responses.
-
                       """)
 
         human_msg_template = HumanMessagePromptTemplate.from_template(template="{input}")
-        QA_PROMPT = ChatPromptTemplate.from_messages([MessagesPlaceholder(variable_name="history"), human_msg_template, system_msg_template])
-
+        QA_PROMPT = ChatPromptTemplate.from_messages([system_msg_template, MessagesPlaceholder(variable_name="history"), human_msg_template])
 
         chain = ConversationChain(llm=self.llm, 
                                   prompt=QA_PROMPT, 
-                                  memory=ConversationBufferWindowMemory(
-                                                        k=4,
-                                                        memory_key="history",
-                                                        return_messages=True), 
+                                  memory = st.session_state.buffer_memory, 
                                   verbose=True)
 
         #count_tokens_chain(chain, chain_input)
@@ -82,7 +91,11 @@ class Chatbot:
 if __name__ == '__main__':
 
     load_dotenv() ### Loading environment variables such as OpenAI key
+    openai.api_key = os.getenv("OPENAI_API_KEY")
     st.write(css, unsafe_allow_html=True)
+
+    if 'buffer_memory' not in st.session_state:
+        st.session_state.buffer_memory = ConversationBufferWindowMemory(k=3,return_messages=True)
 
     chatbot = Chatbot('gpt-3.5-turbo') ### initialize chatbot
     vectorstore = chatbot.get_vectorstore(index_name='blogposts-data') ### initialize vectorstore
@@ -102,14 +115,23 @@ if __name__ == '__main__':
 
     ### Main part
     if user_question:
-        context = vectorstore.similarity_search(user_question, k=2) ### getting similar context based on response
+        
+        refined_query = chatbot.query_refiner(st.session_state.chat_history[-2:], user_question)
+        st.subheader("Refined Query:")
+        st.write(refined_query)
+        
+        context = vectorstore.similarity_search(refined_query, k=2) ### getting similar context based on response
 
         with get_openai_callback() as cb:
+            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (Very important: Please provide an answer that is no more than 100 words.)")
 
-            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question}")
-            if cb.total_tokens > 3000:
+            if cb.total_tokens > 2000:
                 st.session_state.conversation.memory.buffer.pop(0)
-            print(f"Count of tokens:", {cb.total_tokens})
+
+            print(f"Total Tokens: {cb.total_tokens}")
+            print(f"Prompt Tokens: {cb.prompt_tokens}")
+            print(f"Completion Tokens: {cb.completion_tokens}")
+            print(f"Total Cost (USD): ${cb.total_cost}")
 
         print(len(response.split()))
 
@@ -126,7 +148,13 @@ if __name__ == '__main__':
                 "{{MSG}}", st.session_state.chat_history[i]['response']), unsafe_allow_html=True)
 
     #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"Chat_history/data_{st.session_state.timestamp}.json"
+    filename = f"data_{st.session_state.timestamp}.json"
+    
+    chat_history_json = json.dumps(st.session_state.chat_history, ensure_ascii=False, indent=4)
+    st.download_button(label="Download chat history",
+                       data=chat_history_json,
+                       file_name=filename,
+                       mime="application/json")
 
     # with open(filename, 'w') as json_file:
     #     json.dump(st.session_state.chat_history, json_file, ensure_ascii=False, indent=4)
