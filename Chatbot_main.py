@@ -31,7 +31,7 @@ class Chatbot:
 
         self.model_name = model_name
         #self.openai_key = "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" ## provide your openai key
-        self.embeddings = OpenAIEmbeddings( model='text-embedding-ada-002')
+        self.embeddings = OpenAIEmbeddings(model='text-embedding-ada-002')
         self.llm = ChatOpenAI(model_name=model_name, temperature=0.0, max_tokens=500) 
 
 
@@ -52,16 +52,16 @@ class Chatbot:
         """
         Start a conversational chat with a model via Langchain
         """
-        # system_msg_template = SystemMessagePromptTemplate.from_template(template="""
-        #               Act as a helpful startup legal assistant. Use provided context to answer the questions.
-        #               If the question is not related to the context, just say "Hmm, I don't think this question is about startup law.  I can only provide insights on startup law.  Sorry about that!".
-        #               If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
-        #               Use bullet points if you have to make a list, only if necessary.
-        #               Very important: Please provide an answer that is no more than 100 words.
-        #               Very important: Do Not disclose your sources.
-        #               Very important: Do Not disclose any names of persons or names of organizations in your responses.
+        system_msg_template = SystemMessagePromptTemplate.from_template(template="""
+                      Act as a helpful startup legal assistant. Use provided context to answer the questions.
+                      If the question is not related to the context, just say "Hmm, I don't think this question is about startup law.  I can only provide insights on startup law.  Sorry about that!".
+                      If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
+                      Use bullet points if you have to make a list, only if necessary.
+                      Very important: Please provide an answer that is no more than 100 words.
+                      Very important: Do Not disclose your sources.
+                      Very important: Do Not disclose any names of persons or names of organizations in your responses.
 
-        #               """)
+                      """)
 
         human_msg_template = HumanMessagePromptTemplate.from_template(template="{input}")
         QA_PROMPT = ChatPromptTemplate.from_messages([MessagesPlaceholder(variable_name="history"), human_msg_template, system_msg_template])
