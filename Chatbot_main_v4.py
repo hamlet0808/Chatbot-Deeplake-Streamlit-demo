@@ -4,7 +4,6 @@ import pinecone
 import openai
 import json
 
-from langchain.prompts import PromptTemplate
 from langchain.prompts import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
@@ -36,7 +35,7 @@ class Chatbot:
         Load vectorstore of our data from Pinecone index
         """
         pinecone.init(api_key="921d4d1d-ea17-456a-a29b-cb315853a561", ### "921d4d1d-ea17-456a-a29b-cb315853a561",
-                  environment="us-west4-gcp-free") ### "us-west4-gcp-free"
+                      environment="us-west4-gcp-free") ### "us-west4-gcp-free"
 
         vectorstore = Pinecone.from_existing_index(embedding=self.embeddings,
                                                    index_name=index_name)
@@ -44,13 +43,12 @@ class Chatbot:
         return vectorstore
     
     def query_refiner(self,conversation, query):
-
         #print("num of words:", len(conversation.split()))
 
         response = openai.Completion.create(
                     model="text-davinci-003",
                     prompt=f"Given the following user query and conversation log, formulate a question that would be the most relevant to provide the user with an answer from a knowledge base.\n\nCONVERSATION LOG: \n{conversation}\n\nQuery: {query}\n\nRefined Query:",
-                    temperature=0.7,
+                    temperature=0.0,
                     max_tokens=256,
                     top_p=1,
                     frequency_penalty=0,
@@ -58,7 +56,6 @@ class Chatbot:
                 )
         
         response_text = response['choices'][0]['text']
-        
             
         return response_text
 
@@ -81,7 +78,7 @@ class Chatbot:
 
         chain = ConversationChain(llm=self.llm, 
                                   prompt=QA_PROMPT, 
-                                  memory = st.session_state.buffer_memory, 
+                                  memory=st.session_state.buffer_memory,
                                   verbose=True)
 
         #count_tokens_chain(chain, chain_input)
@@ -95,7 +92,7 @@ if __name__ == '__main__':
     st.write(css, unsafe_allow_html=True)
 
     if 'buffer_memory' not in st.session_state:
-        st.session_state.buffer_memory = ConversationBufferWindowMemory(k=3,return_messages=True)
+        st.session_state.buffer_memory = ConversationBufferWindowMemory(k=1,return_messages=True)
 
     chatbot = Chatbot('gpt-3.5-turbo') ### initialize chatbot
     vectorstore = chatbot.get_vectorstore(index_name='blogposts-data') ### initialize vectorstore
@@ -115,15 +112,14 @@ if __name__ == '__main__':
 
     ### Main part
     if user_question:
-        
         refined_query = chatbot.query_refiner(st.session_state.chat_history[-2:], user_question)
-        st.subheader("Refined Query:")
-        st.write(refined_query)
+        print("Refined Query:", refined_query)
+        # st.subheader("Refined Query:")
+        # st.write(refined_query)
         
         context = vectorstore.similarity_search(refined_query, k=2) ### getting similar context based on response
-
         with get_openai_callback() as cb:
-            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (Very important: Please provide an answer that is no more than 100 words.)")
+            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (You MUST provide an answer that is no more than 100 words)")
 
             if cb.total_tokens > 2000:
                 st.session_state.conversation.memory.buffer.pop(0)
@@ -136,7 +132,6 @@ if __name__ == '__main__':
         print(len(response.split()))
 
         ### This part only shows chat history in Streamlit app (we are not going to use in final version)
-
         st.session_state.chat_history.append({'question': user_question, 'response': response})
 
         for i in range(len(st.session_state.chat_history)-1 , -1, -1):
