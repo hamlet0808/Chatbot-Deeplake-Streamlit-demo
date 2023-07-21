@@ -4,7 +4,6 @@ import pinecone
 import openai
 import json
 
-from langchain.prompts import PromptTemplate
 from langchain.prompts import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
@@ -43,14 +42,14 @@ class Chatbot:
 
         return vectorstore
     
-    def query_refiner(self,conversation, query):
+    def query_refiner(self, conversation, query):
 
         #print("num of words:", len(conversation.split()))
 
         response = openai.Completion.create(
                     model="text-davinci-003",
                     prompt=f"Given the following user query and conversation log, formulate a question that would be the most relevant to provide the user with an answer from a knowledge base.\n\nCONVERSATION LOG: \n{conversation}\n\nQuery: {query}\n\nRefined Query:",
-                    temperature=0.7,
+                    temperature=0.0,
                     max_tokens=256,
                     top_p=1,
                     frequency_penalty=0,
@@ -69,7 +68,7 @@ class Chatbot:
         """
         system_msg_template = SystemMessagePromptTemplate.from_template(template="""
                       Act as a helpful startup legal assistant. Your name is Jessica. Use provided context to answer the questions.
-                      If the question is not related to the context, just say "Hmm, I don't think this question is about startup law.  I can only provide insights on startup law.  Sorry about that!".
+                      If the question is not related to the context, just say "Hmm, I don't think this question is about startup law. I can only provide insights on startup law.  Sorry about that!".
                       If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
                       Use bullet points if you have to make a list.
                       Very important: Do Not disclose your sources.
@@ -90,7 +89,7 @@ class Chatbot:
 
 if __name__ == '__main__':
 
-    load_dotenv() ### Loading environment variables such as OpenAI key
+    load_dotenv()  # Loading environment variables such as OpenAI key
     openai.api_key = os.getenv("OPENAI_API_KEY")
     st.write(css, unsafe_allow_html=True)
 
@@ -119,9 +118,9 @@ if __name__ == '__main__':
         st.subheader("Refined Query:")
         st.write(refined_query)
         
-        context = vectorstore.similarity_search(refined_query, k=2) ### getting similar context based on response
+        context = vectorstore.similarity_search(refined_query, k=2)  # getting similar context based on response
         with get_openai_callback() as cb:
-            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (Very important: Please provide an answer that is no more than 100 words.)")
+            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (Very important: Please provide an answer that is between 100 and 150 words.)")
 
             if cb.total_tokens > 2000:
                 st.session_state.conversation.memory.buffer.pop(0)
@@ -133,7 +132,7 @@ if __name__ == '__main__':
 
         print(len(response.split()))
 
-        ### This part only shows chat history in Streamlit app (we are not going to use in final version)
+        # This part only shows chat history in Streamlit app (we are not going to use in final version)
         st.session_state.chat_history.append({'question': user_question, 'response': response})
         for i in range(len(st.session_state.chat_history)-1 , -1, -1):
 
@@ -143,7 +142,6 @@ if __name__ == '__main__':
             st.write(bot_template.replace(
                 "{{MSG}}", st.session_state.chat_history[i]['response']), unsafe_allow_html=True)
 
-    #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"data_{st.session_state.timestamp}.json"
     
     chat_history_json = json.dumps(st.session_state.chat_history, ensure_ascii=False, indent=4)
