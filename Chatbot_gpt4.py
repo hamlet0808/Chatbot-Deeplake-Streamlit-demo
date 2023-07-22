@@ -2,6 +2,7 @@ import os
 import streamlit as st
 import pinecone
 import openai
+import json
 
 from langchain.prompts import (
     SystemMessagePromptTemplate,
