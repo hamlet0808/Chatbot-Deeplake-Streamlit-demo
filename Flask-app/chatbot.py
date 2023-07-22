@@ -1,4 +1,3 @@
-
 import pinecone
 import openai
 
