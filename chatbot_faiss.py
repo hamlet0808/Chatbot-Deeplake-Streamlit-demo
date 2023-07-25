@@ -1,6 +1,5 @@
 import os
 import streamlit as st
-import pinecone
 import openai
 import json
 
@@ -89,7 +88,7 @@ if __name__ == '__main__':
     st.write(css, unsafe_allow_html=True)
 
     if 'buffer_memory' not in st.session_state:
-        st.session_state.buffer_memory = ConversationBufferWindowMemory(k=1,return_messages=True)
+        st.session_state.buffer_memory = ConversationBufferWindowMemory(k=3, return_messages=True)
 
     chatbot = Chatbot('gpt-3.5-turbo') ### initialize chatbot
     #vectorstore = chatbot.get_vectorstore(index_name='blogposts-data') ### initialize vectorstore
@@ -119,9 +118,9 @@ if __name__ == '__main__':
         context = vectorstore_faiss.similarity_search(refined_query, k=2)
         
         with get_openai_callback() as cb:
-            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (You MUST provide an answer that is no more than 100 words)")
+            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (You MUST provide an answer that is between 100 and 150 words)")
 
-            if cb.total_tokens > 2000:
+            if cb.total_tokens > 3000:
                 st.session_state.conversation.memory.buffer.pop(0)
 
             print(f"Total Tokens: {cb.total_tokens}")
@@ -151,8 +150,6 @@ if __name__ == '__main__':
                        file_name=filename,
                        mime="application/json")
 
-    # with open(filename, 'w') as json_file:
-    #     json.dump(st.session_state.chat_history, json_file, ensure_ascii=False, indent=4)
         
 
 
