@@ -113,7 +113,6 @@ if __name__ == '__main__':
         #print("Refined Query:", refined_query)
         # st.subheader("Refined Query:")
         # st.write(refined_query)
-        
         #context = vectorstore.similarity_search(refined_query, k=2) ### getting similar context based on response
         context = vectorstore_faiss.similarity_search(refined_query, k=2)
         
