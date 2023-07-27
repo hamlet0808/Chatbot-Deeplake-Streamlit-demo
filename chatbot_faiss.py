@@ -10,6 +10,7 @@ from langchain.prompts import (
     MessagesPlaceholder
 )
 
+from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.embeddings import SentenceTransformerEmbeddings
 from langchain.chat_models import ChatOpenAI
@@ -27,14 +28,14 @@ class Chatbot:
 
         self.model_name = model_name
         self.llm = ChatOpenAI(model_name=model_name, temperature=0.0, max_tokens=500)
-        self.embeddings_trans = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+        #self.embeddings_trans = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+        self.embeddings = OpenAIEmbeddings(model='text-embedding-ada-002', chunk_size=1000)
     
     def get_vec_faiss(self,index_name):
         """
         Load faiss vectorstore
         """
-
-        new_db = FAISS.load_local(index_name, self.embeddings_trans)
+        new_db = FAISS.load_local(index_name, self.embeddings)
 
         return new_db
     
@@ -88,7 +89,7 @@ if __name__ == '__main__':
     st.write(css, unsafe_allow_html=True)
 
     if 'buffer_memory' not in st.session_state:
-        st.session_state.buffer_memory = ConversationBufferWindowMemory(k=3, return_messages=True)
+        st.session_state.buffer_memory = ConversationBufferWindowMemory(k=1,return_messages=True)
 
     chatbot = Chatbot('gpt-3.5-turbo') ### initialize chatbot
     #vectorstore = chatbot.get_vectorstore(index_name='blogposts-data') ### initialize vectorstore
@@ -107,17 +108,18 @@ if __name__ == '__main__':
     st.header("Your personal AI assistant")
     user_question = st.text_input("Ask a question:")
 
-    ### Main part
+    # Main part
     if user_question:
         refined_query = chatbot.query_refiner(st.session_state.chat_history[-2:], user_question)
-        #print("Refined Query:", refined_query)
-        # st.subheader("Refined Query:")
-        # st.write(refined_query)
+        print("Refined Query:", refined_query)
+        st.subheader("Refined Query:")
+        st.write(refined_query)
+
         #context = vectorstore.similarity_search(refined_query, k=2) ### getting similar context based on response
         context = vectorstore_faiss.similarity_search(refined_query, k=2)
         
         with get_openai_callback() as cb:
-            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (You MUST provide an answer that is between 100 and 150 words)")
+            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (You MUST provide an answer that is no more than 100 words)")
 
             if cb.total_tokens > 3000:
                 st.session_state.conversation.memory.buffer.pop(0)
@@ -132,7 +134,7 @@ if __name__ == '__main__':
         ### This part only shows chat history in Streamlit app (we are not going to use in final version)
         st.session_state.chat_history.append({'question': user_question, 'response': response})
 
-        for i in range(len(st.session_state.chat_history)-1 , -1, -1):
+        for i in range(len(st.session_state.chat_history)-1, -1, -1):
 
             st.write(user_template.replace(
                 "{{MSG}}", st.session_state.chat_history[i]['question']), unsafe_allow_html=True)
@@ -149,6 +151,8 @@ if __name__ == '__main__':
                        file_name=filename,
                        mime="application/json")
 
+    # with open(filename, 'w') as json_file:
+    #     json.dump(st.session_state.chat_history, json_file, ensure_ascii=False, indent=4)
         
 
 
