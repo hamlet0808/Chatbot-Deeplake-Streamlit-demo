@@ -110,18 +110,18 @@ if __name__ == '__main__':
     st.header("Your personal AI assistant")
     user_question = st.text_input("Ask a question:")
 
-    ### Main part
+    # Main part
     if user_question:
         refined_query = chatbot.query_refiner(st.session_state.chat_history[-2:], user_question)
         print("Refined Query:", refined_query)
-        # st.subheader("Refined Query:")
-        # st.write(refined_query)
+        st.subheader("Refined Query:")
+        st.write(refined_query)
         
         context = vectorstore.similarity_search(refined_query, k=2) ### getting similar context based on response
         with get_openai_callback() as cb:
             response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (You MUST provide an answer that is no more than 100 words)")
 
-            if cb.total_tokens > 2000:
+            if cb.total_tokens > 3000:
                 st.session_state.conversation.memory.buffer.pop(0)
 
             print(f"Total Tokens: {cb.total_tokens}")
@@ -134,7 +134,7 @@ if __name__ == '__main__':
         ### This part only shows chat history in Streamlit app (we are not going to use in final version)
         st.session_state.chat_history.append({'question': user_question, 'response': response})
 
-        for i in range(len(st.session_state.chat_history)-1 , -1, -1):
+        for i in range(len(st.session_state.chat_history)-1, -1, -1):
 
             st.write(user_template.replace(
                 "{{MSG}}", st.session_state.chat_history[i]['question']), unsafe_allow_html=True)
