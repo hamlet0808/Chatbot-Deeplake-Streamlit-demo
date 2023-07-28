@@ -28,8 +28,7 @@ class Chatbot:
 
         self.model_name = model_name
         self.llm = ChatOpenAI(model_name=model_name, temperature=0.0, max_tokens=500)
-        #self.embeddings_trans = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-        self.embeddings = OpenAIEmbeddings(model='text-embedding-ada-002', chunk_size=1000)
+        self.embeddings = OpenAIEmbeddings(model='text-embedding-ada-002')
     
     def get_vec_faiss(self,index_name):
         """
@@ -84,18 +83,17 @@ class Chatbot:
 
 if __name__ == '__main__':
 
-    load_dotenv() ### Loading environment variables such as OpenAI key
+    load_dotenv() # Loading environment variables such as OpenAI key
     openai.api_key = os.getenv("OPENAI_API_KEY")
     st.write(css, unsafe_allow_html=True)
 
     if 'buffer_memory' not in st.session_state:
         st.session_state.buffer_memory = ConversationBufferWindowMemory(k=1,return_messages=True)
 
-    chatbot = Chatbot('gpt-3.5-turbo') ### initialize chatbot
-    #vectorstore = chatbot.get_vectorstore(index_name='blogposts-data') ### initialize vectorstore
+    chatbot = Chatbot('gpt-3.5-turbo') # initialize chatbot
     vectorstore_faiss = chatbot.get_vec_faiss(index_name='faiss_index')
 
-    ### Only for streamlit
+    # Only for streamlit
     if "conversation" not in st.session_state:
         st.session_state.conversation = chatbot.conversational_chat()
 
@@ -131,7 +129,7 @@ if __name__ == '__main__':
 
         print(len(response.split()))
 
-        ### This part only shows chat history in Streamlit app (we are not going to use in final version)
+        # This part only shows chat history in Streamlit app (we are not going to use in final version)
         st.session_state.chat_history.append({'question': user_question, 'response': response})
 
         for i in range(len(st.session_state.chat_history)-1, -1, -1):
@@ -154,20 +152,3 @@ if __name__ == '__main__':
     # with open(filename, 'w') as json_file:
     #     json.dump(st.session_state.chat_history, json_file, ensure_ascii=False, indent=4)
         
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
