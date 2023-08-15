@@ -9,7 +9,7 @@ from langchain.prompts import (
 )
 
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Pinecone
+from langchain.vectorstores import Pinecone, DeepLake
 from langchain.chat_models import ChatOpenAI
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.chains import ConversationChain
@@ -22,24 +22,36 @@ class Chatbot:
         self.model_name = model_name
         self.embeddings = OpenAIEmbeddings(model='text-embedding-ada-002')
         self.llm = ChatOpenAI(model_name=model_name, temperature=0.0, max_tokens=500)
-        self.memory = ConversationBufferWindowMemory(k=3, return_messages=True)
+        self.memory = ConversationBufferWindowMemory(k=1, return_messages=True)
         self.chat_history = []
 
     def get_vectorstore(self, key, env, index_name):
         """
         Load vectorstore of our data from Pinecone index
         """
-        pinecone.init(api_key=key, ### "921d4d1d-ea17-456a-a29b-cb315853a561",
-                      environment=env) ### "us-west4-gcp-free"
+        pinecone.init(api_key=key,
+                      environment=env)
 
-        vectorstore = Pinecone.from_existing_index(embedding=self.embeddings,
-                                                   index_name=index_name)
+        vectorstore = Pinecone.from_existing_index(
+                                embedding=self.embeddings,
+                                index_name=index_name)
 
         return vectorstore
+
+    def get_vectorstore_deeplake(self, path):
+        """
+        Load vectorstore of our data from Deeplake path
+        """
+        vectorstore_dl = DeepLake(
+                    dataset_path=path, embedding_function=self.embeddings, read_only=True
+            )
+
+        return vectorstore_dl
 
     def query_refiner(self, query, api_key):
 
         conversation = self.chat_history[-2:]
+        #print("conversation", conversation)
         openai.api_key = api_key
         response = openai.Completion.create(
             model="text-davinci-003",
@@ -62,11 +74,13 @@ class Chatbot:
         """
         system_msg_template = SystemMessagePromptTemplate.from_template(template="""
                       Act as a helpful startup legal assistant. Your name is Jessica. Use provided context to answer the questions.
-                      If the question is not related to the context, just say "Hmm, I don't think this question is about startup law.  I can only provide insights on startup law.  Sorry about that!".
+                      If the question is not related to the context, just say "Hmm, I don't think this question is about startup law. I can only provide insights on startup law.  Sorry about that!".
                       If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
                       Use bullet points if you have to make a list.
                       Very important: Do Not disclose your sources.
-                      Very important: Do Not disclose any names of persons or names of organizations in your responses.
+                      Very important: Do Not disclose any names of persons or names of organizations in your response.
+                      Greeting: If user says his name address them by name.
+                      Introduction: Say your name and introduce yourself as a startup legal assistant.
                       """)
 
         human_msg_template = HumanMessagePromptTemplate.from_template(template="{input}")
@@ -74,8 +88,7 @@ class Chatbot:
 
         chain = ConversationChain(llm=self.llm, 
                                   prompt=QA_PROMPT,
-                                  memory=self.memory, 
-                                  verbose=False)
+                                  memory=self.memory,
+                                  verbose=True)
 
-        #count_tokens_chain(chain, chain_input)
         return chain

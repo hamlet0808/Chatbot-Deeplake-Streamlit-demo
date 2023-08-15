@@ -70,11 +70,13 @@ class Chatbot:
                       If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
                       Use bullet points if you have to make a list.
                       Very important: Do Not disclose your sources.
-                      Very important: Do Not disclose any names of persons or names of organizations in your responses.
+                      Very important: Do Not disclose any names of persons or names of organizations in your response.
+                      Greeting: If user says his name address them by name.
+                      Introduction: Say your name and introduce yourself as a startup legal assistant.
                       """)
 
         human_msg_template = HumanMessagePromptTemplate.from_template(template="{input}")
-        QA_PROMPT = ChatPromptTemplate.from_messages([system_msg_template, MessagesPlaceholder(variable_name="history"), human_msg_template])
+        QA_PROMPT = ChatPromptTemplate.from_messages([system_msg_template, MessagesPlaceholder(variable_name="history"),human_msg_template])
 
         chain = ConversationChain(llm=self.llm, 
                                   prompt=QA_PROMPT,
@@ -124,7 +126,7 @@ if __name__ == '__main__':
             
         
         with get_openai_callback() as cb:
-            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (You MUST provide an answer that is no more than 100 words)")
+            response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n {user_question} (You MUST provide an answer that is no more than 100 words)")
 
             if cb.total_tokens > 3000:
                 st.session_state.conversation.memory.buffer.pop(0)

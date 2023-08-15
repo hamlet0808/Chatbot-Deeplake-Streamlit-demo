@@ -31,7 +31,7 @@ class Chatbot:
 
     def get_vec_DeepLake(self, path):
         """
-        Load faiss vectorstore
+        Load Deeplake vectorstore
         """
         new_db = DeepLake(
             dataset_path=path, embedding_function=self.embeddings, read_only=True
@@ -58,16 +58,19 @@ class Chatbot:
 
 
     def conversational_chat(self):
+
         """
         Start a conversational chat with a model via Langchain
         """
         system_msg_template = SystemMessagePromptTemplate.from_template(template="""
-                      Act as a helpful startup legal assistant. Your name is Jessica. Use provided context to answer the questions. 
-                      If the question is not related to the context, just say "Hmm, I don't think this question is about startup law.  I can only provide insights on startup law.  Sorry about that!".
+                      Act as a helpful startup legal assistant. Your name is Jessica. Use provided context to answer the questions.
+                      If the question is not related to the context, just say "Hmm, I don't think this question is about startup law. I can only provide insights on startup law.  Sorry about that!".
                       If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
                       Use bullet points if you have to make a list.
                       Very important: Do Not disclose your sources.
-                      Very important: Do Not disclose any names of persons or names of organizations in your responses.
+                      Very important: Do Not disclose any names of persons or names of organizations in your response.
+                      Greeting: If user says his name address them by name.
+                      Introduction: Say your name and introduce yourself as a startup legal assistant.
                       """)
 
         human_msg_template = HumanMessagePromptTemplate.from_template(template="{input}")
@@ -109,13 +112,16 @@ if __name__ == '__main__':
 
     # Main part
     if user_question:
-        refined_query = chatbot.query_refiner(st.session_state.chat_history[-2:], user_question)
-        print("Refined Query:", refined_query)
-        st.subheader("Refined Query:")
-        st.write(refined_query)
 
-        #context = vectorstore.similarity_search(refined_query, k=2) ### getting similar context based on response
-        context = vectorstore_lake.similarity_search(refined_query, k=2, distance_metric = "cos")
+        if len(st.session_state.chat_history) > 0:
+            refined_query = chatbot.query_refiner(st.session_state.chat_history[-2:], user_question)
+            print("Refined Query:", refined_query)
+            st.subheader("Refined Query:")
+            st.write(refined_query)
+            context = vectorstore_lake.similarity_search(refined_query, k=2, distance_metric = "cos")
+        else:
+            context = vectorstore_lake.similarity_search(user_question, k=2, distance_metric = "cos")
+
 
         with get_openai_callback() as cb:
             response = st.session_state.conversation.predict(input=f"\n\n Context:\n {context} \n\n question:\n{user_question} (You MUST provide an answer that is no more than 100 words.)")
