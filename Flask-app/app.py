@@ -22,6 +22,7 @@ chatbot = Chatbot('gpt-3.5-turbo')
 def index():
     return render_template('index.html')
 
+
 def get_answer(user_question, pine=True):
     
     if pine:
@@ -31,21 +32,24 @@ def get_answer(user_question, pine=True):
 
     if len(chatbot.chat_history) > 0:
         refined_query = chatbot.query_refiner(user_question, API_KEY)
-        print('refined_query:', refined_query)
+        # print('refined_query:', refined_query)
         context = vectorstore.similarity_search(refined_query, k=2)
     else:
         context = vectorstore.similarity_search(user_question, k=2)
 
     conversation = chatbot.conversational_chat()
+    additional_text = "If the question above is not related to the startup law, just say 'Hmm, I don't think this question is about startup law. I can only provide insights on startup law. Sorry about that!' \nYou MUST provide an answer that is no more than 100 words and use bullet points if you have to make a list."
 
     with get_openai_callback() as cb:
-        response = conversation.predict(input=f" \n\n Context:\n {context} \n\n question:\n {user_question}\n (You MUST provide an answer that is no more than 100 words.)")
-        if cb.total_tokens > 3000:
+
+        response = conversation.predict(input=f" \n\n Context:\n {context} \n\n **question:\n {user_question} **\n\n {additional_text}")
+        if cb.total_tokens > 2500:
             chatbot.memory.buffer.pop(0)
             
     chatbot.chat_history.append({'question': user_question, 'response': response})
-    #print("chatbot_history", chatbot.chat_history)
+    # print("chatbot_history", chatbot.chat_history)
     return response
+
 
 @app.route('/data', methods=['POST'])
 def get_data():
@@ -55,7 +59,7 @@ def get_data():
     print(user_input)
     
     try:
-        model_reply = get_answer(user_input, pine=False)
+        model_reply = get_answer(user_input, pine=True)
         print("model_reply", model_reply)
         print(len(model_reply.split()))
         return jsonify({"response": True, "message": model_reply})

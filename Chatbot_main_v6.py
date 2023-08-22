@@ -22,6 +22,8 @@ from htmlTemplates import css, bot_template, user_template
 from datetime import datetime
 from dotenv import load_dotenv
 
+
+
 class Chatbot:
 
     def __init__(self, model_name):
@@ -29,6 +31,16 @@ class Chatbot:
         self.model_name = model_name
         self.embeddings = OpenAIEmbeddings(model='text-embedding-ada-002')
         self.llm = ChatOpenAI(model_name=model_name, temperature=0.0, max_tokens=500)
+        self.system_msg_template = SystemMessagePromptTemplate.from_template(template="""
+                      Act as a helpful startup legal assistant. Your name is Jessica.
+                      Greeting: If user says his name address them by name.
+                      Introduction: Say your name and introduce yourself as a startup legal assistant.
+                      VERY IMPORTANT: Do Not disclose your sources.
+                      VERY IMPORTANT: Do Not disclose any names of persons or names of organizations in your response.
+                      VERY IMPORTANT: If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
+                      VERY IMPORTANT: Respond as if you are talking with a non-lawyer.
+                      VERY IMPORTANT: Use provided context to answer the question below.
+                      """)
 
     def get_vectorstore(self, index_name):
         """
@@ -42,10 +54,9 @@ class Chatbot:
 
         return vectorstore
 
-    def query_refiner(self,conversation, query):
-        #print("num of words:", len(conversation.split()))
+    def query_refiner(self, conversation, query):
 
-        response = openai.Completion.create(
+        result = openai.Completion.create(
             model="text-davinci-003",
             prompt=f"Given the following user query and conversation log, formulate a question that would be the most relevant to provide the user with an answer from a knowledge base.\n\nCONVERSATION LOG: \n{conversation}\n\nQuery: {query}\n\nRefined Query:",
             temperature=0.0,
@@ -55,27 +66,17 @@ class Chatbot:
             presence_penalty=0
         )
 
-        response_text = response['choices'][0]['text']
+        response_text = result['choices'][0]['text']
 
         return response_text
-
 
     def conversational_chat(self):
         """
         Start a conversational chat with a model via Langchain
         """
-        system_msg_template = SystemMessagePromptTemplate.from_template(template="""
-                      Act as a helpful startup legal assistant. Your name is Jessica. Use provided context to answer the questions.
-                      Greeting: If user says his name address them by name.
-                      Introduction: Say your name and introduce yourself as a startup legal assistant.
-                      VERY IMPORTANT: Do Not disclose your sources.
-                      VERY IMPORTANT: Do Not disclose any names of persons or names of organizations in your response.
-                      VERY IMPORTANT: If the question is not related to the startup law, just say "Hmm, I don't think this question is about startup law. I can only provide insights on startup law. Sorry about that!".
-                      VERY IMPORTANT: If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
-                      """)
 
         human_msg_template = HumanMessagePromptTemplate.from_template(template="{input}")
-        QA_PROMPT = ChatPromptTemplate.from_messages([system_msg_template, MessagesPlaceholder(variable_name="history"), human_msg_template])
+        QA_PROMPT = ChatPromptTemplate.from_messages([self.system_msg_template, MessagesPlaceholder(variable_name="history"), human_msg_template])
 
         chain = ConversationChain(llm=self.llm, 
                                   prompt=QA_PROMPT,
@@ -98,7 +99,9 @@ if __name__ == '__main__':
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    chatbot = Chatbot('gpt-3.5-turbo') # initialize chatbot
+    # model_4 = 'gpt-4'
+    model_3 = 'gpt-3.5-turbo'
+    chatbot = Chatbot(model_3) # initialize chatbot
     vectorstore = chatbot.get_vectorstore(index_name='additional-blogposts-data') ### initialize vectorstore
 
     ### Only for streamlit
@@ -119,13 +122,17 @@ if __name__ == '__main__':
             # print("Refined Query:", refined_query)
             # st.subheader("Refined Query:")
             # st.write(refined_query)
-            context = vectorstore.similarity_search(refined_query, k=2) # getting similar context based on response
+            context = vectorstore.similarity_search_with_score(refined_query, k=2) # getting similar context based on response
         else:
-            context = vectorstore.similarity_search(user_question, k=2)
+            context = vectorstore.similarity_search_with_score(user_question, k=2)
             
-        
         with get_openai_callback() as cb:
-            response = st.session_state.conversation.predict(input=f"\n\n context:\n {context} \n\n question:\n {user_question}\n\n (VERY IMPORTANT:You MUST provide an answer that is no more than 100 words and use bullet points as much as possible.)")
+            # if len(st.session_state.chat_history)% 5 == 0 and len(st.session_state.chat_history) > 0:
+            #     template = chatbot.system_msg_template.prompt.template
+            #     print(template)
+            #     response = st.session_state.conversation.predict(input=f" \n\n Context:\n {context} \n\n question:\n {user_question}\n (You MUST provide an answer that is no more than 100 words and use bullet points if you have to make a list.)\n{template}")
+            # else:
+            response = st.session_state.conversation.predict(input=f" \n\n Context:\n {context} \n\n question:\n {user_question}\n If the question is not related to the startup law, just say 'Hmm, I don't think this question is about startup law. I can only provide insights on startup law. Sorry about that!' \n(You MUST provide an answer that is no more than 100 words and use bullet points if you have to make a list.)")
 
             if cb.total_tokens > 3000:
                 st.session_state.conversation.memory.buffer.pop(0)
@@ -135,9 +142,9 @@ if __name__ == '__main__':
             # print(f"Completion Tokens: {cb.completion_tokens}")
             # print(f"Total Cost (USD): ${cb.total_cost}")
 
-        print(len(response.split()))
+        # print(len(response.split()))
 
-        ### This part only shows chat history in Streamlit app (we are not going to use in final version)
+        # This part only shows chat history in Streamlit app (we are not going to use in final version)
         st.session_state.chat_history.append({'question': user_question, 'response': response})
 
         for i in range(len(st.session_state.chat_history)-1, -1, -1):

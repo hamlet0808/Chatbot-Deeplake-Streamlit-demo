@@ -16,13 +16,12 @@ from langchain.chains import ConversationChain
 
 
 class Chatbot:
-
     def __init__(self, model_name):
 
         self.model_name = model_name
         self.embeddings = OpenAIEmbeddings(model='text-embedding-ada-002')
         self.llm = ChatOpenAI(model_name=model_name, temperature=0.0, max_tokens=500)
-        self.memory = ConversationBufferWindowMemory(k=1, return_messages=True)
+        self.memory = ConversationBufferWindowMemory(k=3, return_messages=True)
         self.chat_history = []
 
     def get_vectorstore(self, key, env, index_name):
@@ -73,21 +72,21 @@ class Chatbot:
         Start a conversational chat with a model via Langchain
         """
         system_msg_template = SystemMessagePromptTemplate.from_template(template="""
-                      Act as a helpful startup legal assistant. Your name is Jessica. Use provided context to answer the questions.
-                      If the question is not related to the context, just say "Hmm, I don't think this question is about startup law. I can only provide insights on startup law.  Sorry about that!".
-                      If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
-                      Use bullet points if you have to make a list.
-                      Very important: Do Not disclose your sources.
-                      Very important: Do Not disclose any names of persons or names of organizations in your response.
+                      Act as a helpful startup legal assistant. Your name is Jessica.
                       Greeting: If user says his name address them by name.
                       Introduction: Say your name and introduce yourself as a startup legal assistant.
+                      VERY IMPORTANT: Do Not disclose your sources.
+                      VERY IMPORTANT: Do Not disclose any names of persons or names of organizations in your response.
+                      VERY IMPORTANT: If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
+                      VERY IMPORTANT: Respond as if you are talking with a non-lawyer.
+                      VERY IMPORTANT: Use provided context to answer the question below.
                       """)
 
         human_msg_template = HumanMessagePromptTemplate.from_template(template="{input}")
-        QA_PROMPT = ChatPromptTemplate.from_messages([system_msg_template, MessagesPlaceholder(variable_name="history"), human_msg_template])
+        qa_prompt = ChatPromptTemplate.from_messages([system_msg_template, MessagesPlaceholder(variable_name="history"), human_msg_template])
 
         chain = ConversationChain(llm=self.llm, 
-                                  prompt=QA_PROMPT,
+                                  prompt=qa_prompt,
                                   memory=self.memory,
                                   verbose=True)
 
