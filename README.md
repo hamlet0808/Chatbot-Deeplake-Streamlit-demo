@@ -5,4 +5,4 @@ In this repository, you'll find a demo version of a chatbot powered by the OpenA
 This chatbot is enhanced with additional context retrieved from the DeepLake vector database. This database contains scraped data from various fields. 
 By leveraging this supplementary information, the chatbot is capable of providing more up-to-date and precise answers compared to the standard ChatGPT responses.
 
-To run the code and experience the chatbot, execute streamlit run chatbot_Deeplake.py in your command line or terminal.
+To run the code and experience the chatbot, execute **streamlit run chatbot_Deeplake.py ** in your command line or terminal.
