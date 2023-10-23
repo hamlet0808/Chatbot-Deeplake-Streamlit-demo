@@ -62,13 +62,12 @@ class Chatbot:
         Start a conversational chat with a model via Langchain
         """
         system_msg_template = SystemMessagePromptTemplate.from_template(template="""
-                      Act as a helpful startup legal assistant. Your name is Jessica. Use provided context to answer the questions. Answer in simple way, not to a lawyer.
-                      If the question is not related to the context, just say "Hmm, I don't think this question is about startup law.  I can only provide insights on startup law.  Sorry about that!".
+                      Act as a helpful AI legal assistant. Your name is Jessica. Use provided context to answer the questions. Answer in simple way.
+                      If the question is not related to the context, just say "Hmm, I don't think this question is about provided context.Sorry about that!".
                       If the question is about the sources of your context, just say "As an AI language model, I draw upon a large pool of data and don't rely on any one single source."
                       Use bullet points if you have to make a list.
                       Very important: Do Not disclose your sources.
                       Very important: Do Not disclose any names of persons or names of organizations in your responses.
-
                       """)
 
         human_msg_template = HumanMessagePromptTemplate.from_template(template="{input}")
@@ -90,7 +89,7 @@ if __name__ == '__main__':
     st.write(css, unsafe_allow_html=True)
 
     if 'buffer_memory' not in st.session_state:
-        st.session_state.buffer_memory = ConversationBufferWindowMemory(k=1, return_messages=True)
+        st.session_state.buffer_memory = ConversationBufferWindowMemory(k=3, return_messages=True)
 
     chatbot = Chatbot('gpt-3.5-turbo') # initialize chatbot
     vectorstore_lake = chatbot.get_vec_DeepLake(path='my_deeplake/')
@@ -129,7 +128,7 @@ if __name__ == '__main__':
             print(f"Completion Tokens: {cb.completion_tokens}")
             print(f"Total Cost (USD): ${cb.total_cost}")
 
-        print(len(response.split()))
+        #print(len(response.split()))
 
         # This part only shows chat history in Streamlit app (we are not going to use in final version)
         st.session_state.chat_history.append({'question': user_question, 'response': response})
